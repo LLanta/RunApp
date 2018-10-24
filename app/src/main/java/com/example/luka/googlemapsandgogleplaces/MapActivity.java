@@ -1,6 +1,7 @@
 package com.example.luka.googlemapsandgogleplaces;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -37,10 +38,13 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, Serializable {
 
     //CONSTANTS - in separate class
     private static final int REQUEST_CHECK_SETTINGS = 9003;
@@ -51,18 +55,20 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
     private static final float DEFAULT_ZOOM = 15;
+    private static final String INTENT_PREVIEW = "2001";
 
     //callback
     private LocationCallback mLocationCallback;
 
     //vars
+    private boolean mTracingEnabled=false;
     private LocationRequest mLocationRequest;
     private boolean mRequestingLocationUpdates = false;
     private boolean mLocationPermissionsGranted = false;
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location currentLocation;
-    private List<LatLng> points = new ArrayList<LatLng>();
+    private RunProperties properties;
     Polyline line;
     Button btnStart;
     Button btnStop;
@@ -72,6 +78,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        properties= new RunProperties(0,new ArrayList<List<LatLng>>(Collections.singleton(new ArrayList<LatLng>())));
+        properties.runDuration=2;
+        locationCallbackInit();
         getLocationPermission();
         initListener();
     }
@@ -82,6 +91,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             @Override
             public void onClick(View view) {
                 //points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
+                properties.points.add(new ArrayList<LatLng>());
+
+                mTracingEnabled = true;
                 mRequestingLocationUpdates = true;
 
 
@@ -124,7 +136,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         }
                     }
                 });
-                locationCallbackInit();
             }
         });
         btnPause = findViewById(R.id.btnPause);
@@ -132,9 +143,23 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             @Override
             public void onClick(View view) {
                 stopLocationUpdates();
-                points.clear();
+                mTracingEnabled=false;
             }
         });
+        btnStop = findViewById(R.id.btnStop);
+        btnStop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MapActivity.this, ResultPreviewActivity.class);
+                intent.putExtra(INTENT_PREVIEW, properties);
+                startActivity(intent);
+                mMap.clear();
+            }
+        });
+    }
+
+    private void getRunResult() {
+
     }
 
     private void locationCallbackInit() {
@@ -147,13 +172,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 for (Location location : locationResult.getLocations()) {
                     // Update UI with location data
                     // ...
-                    points.add(new LatLng(location.getLatitude(),location.getLongitude()));
+                    //List<LatLng> points = new ArrayList<>();
+
+                    properties.points.get(properties.points.size()-1).add(new LatLng(location.getLatitude(),location.getLongitude()));
+                    //points.add(new LatLng(location.getLatitude(),location.getLongitude()));
                     PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
-                    for (int z = 0; z < points.size(); z++) {
-                        LatLng point = points.get(z);
+                    for (int z = 0; z < properties.points.get(properties.points.size()-1).size(); z++) {
+                        LatLng point = properties.points.get(properties.points.size()-1).get(z);
                         options.add(point);
                     }
                     line = mMap.addPolyline(options);
+                    //properties.points.addAll(properties.polygonIndex, Arrays.asList(points));
                     Log.d(TAG, "onLocationResult: drawng route");
                     Toast.makeText(MapActivity.this, "Coords: Lat: " + currentLocation.getLatitude() + ", Long: " + currentLocation.getLongitude(), Toast.LENGTH_SHORT).show();
                 }
@@ -164,7 +193,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     @Override
     protected void onResume() {
         super.onResume();
-        if (mRequestingLocationUpdates) {
+        if (mRequestingLocationUpdates&&mTracingEnabled) {
             startLocationUpdates();
         }
     }
@@ -221,7 +250,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         if (task.isSuccessful()){
                             Log.d(TAG, "onComplete: found location");
                             currentLocation = (Location) task.getResult();
-                            points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
+                            //properties.points.get(properties.polygonIndex);
+                            //points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
                             moveCamera(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()),DEFAULT_ZOOM);
                         }
                         else {
