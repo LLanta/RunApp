@@ -78,7 +78,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
-        properties= new RunProperties(0,new ArrayList<List<LatLng>>(Collections.singleton(new ArrayList<LatLng>())));
+        properties= new RunProperties();
         properties.runDuration=2;
         locationCallbackInit();
         getLocationPermission();
@@ -91,7 +91,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             @Override
             public void onClick(View view) {
                 //points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
-                properties.points.add(new ArrayList<LatLng>());
+                properties.points.add(new ArrayList<SerializableLatLng>());
 
                 mTracingEnabled = true;
                 mRequestingLocationUpdates = true;
@@ -174,12 +174,14 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     // ...
                     //List<LatLng> points = new ArrayList<>();
 
-                    properties.points.get(properties.points.size()-1).add(new LatLng(location.getLatitude(),location.getLongitude()));
+                    SerializableLatLng serLatLng = new SerializableLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
+                    properties.points.get(properties.points.size()-1).add(serLatLng);
                     //points.add(new LatLng(location.getLatitude(),location.getLongitude()));
                     PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
                     for (int z = 0; z < properties.points.get(properties.points.size()-1).size(); z++) {
-                        LatLng point = properties.points.get(properties.points.size()-1).get(z);
-                        options.add(point);
+                        SerializableLatLng point = properties.points.get(properties.points.size()-1).get(z);
+
+                        options.add(point.getLatLng());
                     }
                     line = mMap.addPolyline(options);
                     //properties.points.addAll(properties.polygonIndex, Arrays.asList(points));

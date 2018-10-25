@@ -16,7 +16,8 @@ public class ResultPreviewActivity extends AppCompatActivity {
         TextView tvMessage = findViewById(R.id.tvMessage);
 
         Intent intent = getIntent();
-        RunProperties properties = intent.getParcelableExtra("2001");
-        tvMessage.setText((int) properties.runDuration);
+        RunProperties properties = (RunProperties) intent.getSerializableExtra("2001");
+
+        tvMessage.setText(String.valueOf(properties.points.get(0).get(1).lat));
     }
 }
