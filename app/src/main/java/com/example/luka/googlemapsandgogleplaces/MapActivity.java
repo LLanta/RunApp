@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -15,6 +17,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -41,7 +44,9 @@ import com.google.android.gms.tasks.Task;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, Serializable {
@@ -73,16 +78,34 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     Button btnStart;
     Button btnStop;
     Button btnPause;
+    Date currentTime;
+    TextView tvTime;
+    long MillisecondTime, StartTime, TimeBuff, UpdateTime ;
+
+    Handler handler;
+
+    int Seconds, Minutes, MilliSeconds ;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
-        properties= new RunProperties();
-        properties.runDuration=2;
+        initVars();
         locationCallbackInit();
         getLocationPermission();
         initListener();
+    }
+
+    private void initVars() {
+        handler = new Handler() ;
+        properties= new RunProperties();
+        tvTime = (TextView) findViewById(R.id.tvTime);
+        tvTime.setText("00:00:00");
+        MillisecondTime = 0L ;
+        StartTime = 0L;
+        TimeBuff = 0L;
+        UpdateTime = 0L;
+
     }
 
     private void initListener() {
@@ -90,7 +113,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
+                StartTime = SystemClock.uptimeMillis();
+                handler.postDelayed(runnable, 0);
+
                 properties.points.add(new ArrayList<SerializableLatLng>());
 
                 mTracingEnabled = true;
@@ -110,9 +135,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 task.addOnSuccessListener(MapActivity.this, new OnSuccessListener<LocationSettingsResponse>() {
                     @Override
                     public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
-                        // All location settings are satisfied. The client can initialize
-                        // location requests here.
-                        // ...
                         locationSettingsResponse.getLocationSettingsStates();
                         startLocationUpdates();
                     }
@@ -142,6 +164,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         btnPause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                TimeBuff += MillisecondTime;
+                handler.removeCallbacks(runnable);
                 stopLocationUpdates();
                 mTracingEnabled=false;
             }
@@ -150,6 +174,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                TimeBuff += MillisecondTime;
+                handler.removeCallbacks(runnable);
+                stopLocationUpdates();
+                mTracingEnabled=false;
+
                 Intent intent = new Intent(MapActivity.this, ResultPreviewActivity.class);
                 intent.putExtra(INTENT_PREVIEW, properties);
                 startActivity(intent);
@@ -158,9 +187,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
     }
 
-    private void getRunResult() {
-
-    }
 
     private void locationCallbackInit() {
         mLocationCallback = new LocationCallback() {
@@ -311,4 +337,29 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             }
         }
     }
+
+    public Runnable runnable = new Runnable() {
+
+        public void run() {
+
+            MillisecondTime = SystemClock.uptimeMillis() - StartTime;
+
+            UpdateTime = TimeBuff + MillisecondTime;
+
+            Seconds = (int) (UpdateTime / 1000);
+
+            Minutes = Seconds / 60;
+
+            Seconds = Seconds % 60;
+
+            MilliSeconds = (int) (UpdateTime % 1000);
+
+            tvTime.setText("" + Minutes + ":"
+                    + String.format("%02d", Seconds) + ":"
+                    + String.format("%03d", MilliSeconds));
+
+            handler.postDelayed(this, 0);
+        }
+
+    };
 }
