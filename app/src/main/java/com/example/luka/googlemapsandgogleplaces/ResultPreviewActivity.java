@@ -10,13 +10,19 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
@@ -28,8 +34,9 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
     private static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
-    private static final float DEFAULT_ZOOM = 15;
+    private static final float DEFAULT_ZOOM = 25;
 
+    private float zoom;
     private boolean mLocationPermissionsGranted = false;
     private GoogleMap mMap;
     RunProperties properties;
@@ -38,6 +45,7 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result_preview);
+        zoom=25;
         getLocationPermission();
         initMap();
         TextView tvMessage = findViewById(R.id.tvMessage);
@@ -45,7 +53,6 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
         Intent intent = getIntent();
         properties = (RunProperties) intent.getSerializableExtra("2001");
 
-        tvMessage.setText(String.valueOf(properties.points.get(0).get(1).lat));
     }
 
     private void initMap(){
@@ -106,16 +113,23 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
 
     private void drawRunRoute(){
         Polyline line;
-
-
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(properties.centerOfRoute.getLatLng(),zoom));
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
         for (int i = 0; i < properties.points.size(); i++) {
             PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
             for(int y=0;y<properties.points.get(i).size();y++) {
                 SerializableLatLng point = properties.points.get(i).get(y);
                 options.add(point.getLatLng());
+                builder.include(point.getLatLng());// optimize latter to not store all latlng points but only the farrest
+
             }
             line = mMap.addPolyline(options);
         }
+        LatLngBounds bounds = builder.build();
+        int padding = 0; // offset from edges of the map in pixels
+        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+        mMap.moveCamera(cu);
+
 
     }
 }
