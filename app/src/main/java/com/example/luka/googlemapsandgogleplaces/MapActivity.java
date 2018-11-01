@@ -59,7 +59,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
     private static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
-    private static final float DEFAULT_ZOOM = 15;
+    private static final float DEFAULT_ZOOM = 20;
     private static final String INTENT_PREVIEW = "2001";
 
     //callback
@@ -80,6 +80,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     Button btnPause;
     Date currentTime;
     TextView tvTime;
+    TextView tvDistance;
     long MillisecondTime, StartTime, TimeBuff, UpdateTime ;
 
     Handler handler;
@@ -99,12 +100,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private void initVars() {
         handler = new Handler() ;
         properties= new RunProperties();
+        tvDistance = (TextView) findViewById(R.id.tvDistance);
+        tvDistance.setText("0 m");
         tvTime = (TextView) findViewById(R.id.tvTime);
         tvTime.setText("00:00:00");
         MillisecondTime = 0L ;
         StartTime = 0L;
         TimeBuff = 0L;
         UpdateTime = 0L;
+        MapDisplayUtil.resetConstrains();
 
     }
 
@@ -174,6 +178,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         btnStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                properties.centerOfRoute = new SerializableLatLng(MapDisplayUtil.getCenter());
+                properties.latMin = MapDisplayUtil.minLat;
+                properties.latMax = MapDisplayUtil.maxLat;
+                properties.lngMin = MapDisplayUtil.minLng;
+                properties.lngMax = MapDisplayUtil.maxLng;
+
                 TimeBuff += MillisecondTime;
                 handler.removeCallbacks(runnable);
                 stopLocationUpdates();
@@ -208,14 +218,50 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         SerializableLatLng point = properties.points.get(properties.points.size()-1).get(z);
 
                         options.add(point.getLatLng());
+                        MapDisplayUtil.isMinLat(point.getLatLng().latitude);
+                        MapDisplayUtil.isMaxLat(point.getLatLng().latitude);
+                        MapDisplayUtil.isMinLng(point.getLatLng().longitude);
+                        MapDisplayUtil.isMaxLng(point.getLatLng().longitude);
+                        if(properties.points.get(properties.points.size()-1).size()>1){
+                            Log.d("array", "Lenght of outer array "+ properties.points.size());
+                            Log.d("array", "Lenght of inner array "+ properties.points.get(properties.points.size()-1).size());
+                            Log.d("array", "z value "+ z);
+                            SerializableLatLng prev = properties.points.get(properties.points.size()-1).get(properties.points.get(properties.points.size()-1).size()-1);
+                            updateDistanceAndSpeed(prev.getLatLng(), point.getLatLng());
+                        }
                     }
                     line = mMap.addPolyline(options);
+                    moveCamera(MapDisplayUtil.getCenter(),DEFAULT_ZOOM);
                     //properties.points.addAll(properties.polygonIndex, Arrays.asList(points));
                     Log.d(TAG, "onLocationResult: drawng route");
                     Toast.makeText(MapActivity.this, "Coords: Lat: " + currentLocation.getLatitude() + ", Long: " + currentLocation.getLongitude(), Toast.LENGTH_SHORT).show();
                 }
-            };
+            }
         };
+    }
+
+    private void updateDistanceAndSpeed(LatLng prev, LatLng current) {
+        Location locationA = new Location("point A");
+
+        locationA.setLatitude(prev.latitude);
+        locationA.setLongitude(prev.longitude);
+        Log.d("speedA","lat: "+prev.latitude+" long: "+ prev.longitude);
+
+
+
+        Location locationB = new Location("point B");
+
+        locationB.setLatitude(current.latitude);
+        locationB.setLongitude(current.longitude);
+
+        Log.d("speedB","lat: "+current.latitude+" long: "+ current.longitude);
+        float distance = locationA.distanceTo(locationB);
+        Log.d(TAG, "distance local: "+distance);
+        Log.d(TAG, "distance global: "+properties.distance);
+
+        properties.distance +=distance;
+        tvDistance.setText(distance+" m"+ properties.distance);
+        //Toast.makeText(MapActivity.this, "Update speed", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -280,6 +326,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             currentLocation = (Location) task.getResult();
                             //properties.points.get(properties.polygonIndex);
                             //points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
+
                             moveCamera(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()),DEFAULT_ZOOM);
                         }
                         else {
