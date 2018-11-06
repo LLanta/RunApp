@@ -5,10 +5,10 @@ import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -27,20 +27,13 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import static com.example.luka.googlemapsandgogleplaces.Constants.*;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback{
     private static final String TAG = "MainActivity";
 
-    private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
-    private static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
-
-    private static final int ERROR_DIALOG_REQUEST = 9001;
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
-    private static final float DEFAULT_ZOOM = 15;
-
-    private boolean mRequestingLocationUpdates = false;
     private boolean mLocationPermissionsGranted = false;
     private GoogleMap mMap;
-    private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location currentLocation;
 
 
@@ -56,7 +49,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void init(){
-        Button btnMap = (Button) findViewById(R.id.btnMap);
+        Button btnMap =  findViewById(R.id.btnMap);
         btnMap.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -89,22 +82,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void initMap(){
         SupportMapFragment mapFragment = (SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map);
-        mapFragment.getMapAsync((OnMapReadyCallback) MainActivity.this);
+        mapFragment.getMapAsync( MainActivity.this);
     }
 
     private void getDeviceLocation(){
-        Log.d(TAG, "getDeviceLocation: getdevice location");
+        FusedLocationProviderClient mFusedLocationProviderClient;
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         try{
             if (mLocationPermissionsGranted){
                 Task location = mFusedLocationProviderClient.getLastLocation();
-                location.addOnCompleteListener(new OnCompleteListener() {
+                location.addOnCompleteListener(new OnCompleteListener<Location>() {
                     @Override
                     public void onComplete(@NonNull Task task) {
                         if (task.isSuccessful()){
                             Log.d(TAG, "onComplete: found location");
                             currentLocation = (Location) task.getResult();
-                            moveCamera(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()),DEFAULT_ZOOM);
+                            moveCamera(new LatLng(currentLocation != null ? currentLocation.getLatitude() : 0, currentLocation != null ? currentLocation.getLongitude() : 0));
                         }
                         else {
                             Log.d(TAG, "onComplete: current location is null");
@@ -119,9 +112,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void moveCamera(LatLng latLng, float zoom){
+    private void moveCamera(LatLng latLng){
         Log.d(TAG, "moveCamera: moving the camera to "+ latLng.latitude+", "+latLng.longitude);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,zoom));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,DEFAULT_ZOOM));
     }
 
     private void getLocationPermission(){
@@ -148,9 +141,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         switch(requestCode){
             case LOCATION_PERMISSION_REQUEST_CODE:{
                 if (grantResults.length>0){
-                    for(int i = 0 ; i<grantResults.length;i++){
-                        if(grantResults[i] != PackageManager.PERMISSION_GRANTED){
-                            mLocationPermissionsGranted = false;
+                    for (int grantResult : grantResults) {
+                        if (grantResult != PackageManager.PERMISSION_GRANTED) {
                             return;
                         }
                     }

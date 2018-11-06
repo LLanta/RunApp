@@ -1,6 +1,7 @@
 package com.example.luka.googlemapsandgogleplaces;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -9,11 +10,11 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -40,27 +41,14 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-
+import com.google.maps.android.SphericalUtil;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import static com.example.luka.googlemapsandgogleplaces.Constants.*;
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, Serializable {
 
-    //CONSTANTS - in separate class
-    private static final int REQUEST_CHECK_SETTINGS = 9003;
-
     private static final String TAG = "MapActivity";
-
-    private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
-    private static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
-    private static final float DEFAULT_ZOOM = 20;
-    private static final String INTENT_PREVIEW = "2001";
 
     //callback
     private LocationCallback mLocationCallback;
@@ -73,12 +61,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location currentLocation;
-    private RunProperties properties;
+    private Run properties;
     Polyline line;
     Button btnStart;
     Button btnStop;
     Button btnPause;
-    Date currentTime;
     TextView tvTime;
     TextView tvDistance;
     long MillisecondTime, StartTime, TimeBuff, UpdateTime ;
@@ -99,10 +86,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     private void initVars() {
         handler = new Handler() ;
-        properties= new RunProperties();
-        tvDistance = (TextView) findViewById(R.id.tvDistance);
+        properties= new Run();
+        tvDistance =  findViewById(R.id.tvDistance);
         tvDistance.setText("0 m");
-        tvTime = (TextView) findViewById(R.id.tvTime);
+        tvTime =  findViewById(R.id.tvTime);
         tvTime.setText("00:00:00");
         MillisecondTime = 0L ;
         StartTime = 0L;
@@ -129,7 +116,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 mLocationRequest = new LocationRequest();
                 mLocationRequest.setInterval(10000);
                 mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-                mLocationRequest.setFastestInterval(5000);
+                mLocationRequest.setFastestInterval(2000);
 
                 LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                         .addLocationRequest(mLocationRequest);
@@ -183,6 +170,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 properties.latMax = MapDisplayUtil.maxLat;
                 properties.lngMin = MapDisplayUtil.minLng;
                 properties.lngMax = MapDisplayUtil.maxLng;
+                properties.runDuration = (String )tvTime.getText();
 
                 TimeBuff += MillisecondTime;
                 handler.removeCallbacks(runnable);
@@ -191,8 +179,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
                 Intent intent = new Intent(MapActivity.this, ResultPreviewActivity.class);
                 intent.putExtra(INTENT_PREVIEW, properties);
-                startActivity(intent);
                 mMap.clear();
+
+                startActivity(intent);
+
             }
         });
     }
@@ -205,12 +195,24 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 if (locationResult == null) {
                     return;
                 }
-                for (Location location : locationResult.getLocations()) {
-                    // Update UI with location data
-                    // ...
-                    //List<LatLng> points = new ArrayList<>();
+                Location location = null;
 
-                    SerializableLatLng serLatLng = new SerializableLatLng(new LatLng(location.getLatitude(),location.getLongitude()));
+                for (Location tempLocation : locationResult.getLocations()) {
+                    if(location==null){
+                        location = tempLocation;
+                    }
+                    if (tempLocation.hasAccuracy())
+                        if (tempLocation.getAccuracy() < location.getAccuracy()) {
+                            location = tempLocation;
+                        }
+                }
+                if (location != null) {
+                    if (!location.hasAccuracy() || location.getAccuracy() < 30) {
+                        return;
+                    }
+                }
+
+                SerializableLatLng serLatLng = new SerializableLatLng(new LatLng(location != null ? location.getLatitude() : 0, location != null ? location.getLongitude() : 0));
                     properties.points.get(properties.points.size()-1).add(serLatLng);
                     //points.add(new LatLng(location.getLatitude(),location.getLongitude()));
                     PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
@@ -222,46 +224,24 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         MapDisplayUtil.isMaxLat(point.getLatLng().latitude);
                         MapDisplayUtil.isMinLng(point.getLatLng().longitude);
                         MapDisplayUtil.isMaxLng(point.getLatLng().longitude);
-                        if(properties.points.get(properties.points.size()-1).size()>1){
-                            Log.d("array", "Lenght of outer array "+ properties.points.size());
-                            Log.d("array", "Lenght of inner array "+ properties.points.get(properties.points.size()-1).size());
-                            Log.d("array", "z value "+ z);
-                            SerializableLatLng prev = properties.points.get(properties.points.size()-1).get(properties.points.get(properties.points.size()-1).size()-1);
-                            updateDistanceAndSpeed(prev.getLatLng(), point.getLatLng());
-                        }
                     }
                     line = mMap.addPolyline(options);
-                    moveCamera(MapDisplayUtil.getCenter(),DEFAULT_ZOOM);
-                    //properties.points.addAll(properties.polygonIndex, Arrays.asList(points));
+                    moveCamera(MapDisplayUtil.getCenter());
                     Log.d(TAG, "onLocationResult: drawng route");
                     Toast.makeText(MapActivity.this, "Coords: Lat: " + currentLocation.getLatitude() + ", Long: " + currentLocation.getLongitude(), Toast.LENGTH_SHORT).show();
-                }
+                    updateDistanceAndSpeed();
             }
         };
     }
 
-    private void updateDistanceAndSpeed(LatLng prev, LatLng current) {
-        Location locationA = new Location("point A");
+    private void updateDistanceAndSpeed() {
+        ArrayList<LatLng> arr = new ArrayList<>();
+        for(SerializableLatLng point : properties.points.get(properties.points.size()-1)){
+            arr.add(point.getLatLng());
+        }
 
-        locationA.setLatitude(prev.latitude);
-        locationA.setLongitude(prev.longitude);
-        Log.d("speedA","lat: "+prev.latitude+" long: "+ prev.longitude);
-
-
-
-        Location locationB = new Location("point B");
-
-        locationB.setLatitude(current.latitude);
-        locationB.setLongitude(current.longitude);
-
-        Log.d("speedB","lat: "+current.latitude+" long: "+ current.longitude);
-        float distance = locationA.distanceTo(locationB);
-        Log.d(TAG, "distance local: "+distance);
-        Log.d(TAG, "distance global: "+properties.distance);
-
-        properties.distance +=distance;
-        tvDistance.setText(distance+" m"+ properties.distance);
-        //Toast.makeText(MapActivity.this, "Update speed", Toast.LENGTH_SHORT).show();
+        properties.runDistance = SphericalUtil.computeLength(arr);
+        tvDistance.setText(" m"+ properties.runDistance);
     }
 
     @Override
@@ -318,16 +298,14 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         try{
             if (mLocationPermissionsGranted){
                 Task location = mFusedLocationProviderClient.getLastLocation();
-                location.addOnCompleteListener(new OnCompleteListener() {
+                location.addOnCompleteListener(new OnCompleteListener<Location>() {
                     @Override
                     public void onComplete(@NonNull Task task) {
                         if (task.isSuccessful()){
                             Log.d(TAG, "onComplete: found location");
                             currentLocation = (Location) task.getResult();
-                            //properties.points.get(properties.polygonIndex);
-                            //points.add(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()));
 
-                            moveCamera(new LatLng(currentLocation.getLatitude(),currentLocation.getLongitude()),DEFAULT_ZOOM);
+                            moveCamera(new LatLng(currentLocation != null ? currentLocation.getLatitude() : 0, currentLocation != null ? currentLocation.getLongitude() : 0));
                         }
                         else {
                             Log.d(TAG, "onComplete: current location is null");
@@ -342,9 +320,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
-    private void moveCamera(LatLng latLng, float zoom){
+    private void moveCamera(LatLng latLng){
         Log.d(TAG, "moveCamera: moving the camera to "+ latLng.latitude+", "+latLng.longitude);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,zoom));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,DEFAULT_ZOOM));
     }
 
     private void getLocationPermission(){
@@ -371,9 +349,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         switch(requestCode){
             case LOCATION_PERMISSION_REQUEST_CODE:{
                 if (grantResults.length>0){
-                    for(int i = 0 ; i<grantResults.length;i++){
-                        if(grantResults[i] != PackageManager.PERMISSION_GRANTED){
-                            mLocationPermissionsGranted = false;
+                    for (int grantResult : grantResults) {
+                        if (grantResult != PackageManager.PERMISSION_GRANTED) {
                             return;
                         }
                     }
@@ -385,28 +362,33 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
-    public Runnable runnable = new Runnable() {
+    public Runnable runnable;
 
-        public void run() {
+    {
+        runnable = new Runnable() {
 
-            MillisecondTime = SystemClock.uptimeMillis() - StartTime;
+            @SuppressLint({"SetTextI18n", "DefaultLocale"})
+            public void run() {
 
-            UpdateTime = TimeBuff + MillisecondTime;
+                MillisecondTime = SystemClock.uptimeMillis() - StartTime;
 
-            Seconds = (int) (UpdateTime / 1000);
+                UpdateTime = TimeBuff + MillisecondTime;
 
-            Minutes = Seconds / 60;
+                Seconds = (int) (UpdateTime / 1000);
 
-            Seconds = Seconds % 60;
+                Minutes = Seconds / 60;
 
-            MilliSeconds = (int) (UpdateTime % 1000);
+                Seconds = Seconds % 60;
 
-            tvTime.setText("" + Minutes + ":"
-                    + String.format("%02d", Seconds) + ":"
-                    + String.format("%03d", MilliSeconds));
+                MilliSeconds = (int) (UpdateTime % 1000);
 
-            handler.postDelayed(this, 0);
-        }
+                tvTime.setText("" + Minutes + ":"
+                        + String.format("%02d", Seconds) + ":"
+                        + String.format("%03d", MilliSeconds));
 
-    };
+                handler.postDelayed(this, 0);
+            }
+
+        };
+    }
 }

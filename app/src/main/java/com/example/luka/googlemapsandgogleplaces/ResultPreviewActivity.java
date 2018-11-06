@@ -4,60 +4,93 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.location.Location;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.Polyline;
+
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import org.w3c.dom.Text;
+import java.util.List;
+
+import static com.example.luka.googlemapsandgogleplaces.Constants.*;
+
+
 
 public class ResultPreviewActivity extends AppCompatActivity implements OnMapReadyCallback{
 
-    private static final String FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION;
-    private static final String COARSE_LOCATION = Manifest.permission.ACCESS_COARSE_LOCATION;
-
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
-    private static final float DEFAULT_ZOOM = 25;
-
-    private float zoom;
+    //vars
     private boolean mLocationPermissionsGranted = false;
     private GoogleMap mMap;
-    RunProperties properties;
+    Run properties;
+    TextView tvRunDuration;
+    TextView tvRunDistance;
+    Button btnSave;
+    Button btnDismiss;
+    private ViewModel runViewModel;
+    RunAdapter adapter;
+    RecyclerView recyclerView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result_preview);
-        zoom=25;
         getLocationPermission();
         initMap();
-        TextView tvMessage = findViewById(R.id.tvMessage);
+        initVars();
+        fillRunInfo();
+        initButtonListeners();
+    }
 
+
+    private void initButtonListeners() {
+        btnSave.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(ResultPreviewActivity.this, ResultListActivity.class);
+                intent.putExtra(INTENT_LIST, properties);
+                mMap.clear();
+
+                startActivity(intent);
+            }
+        });
+    }
+
+    private void fillRunInfo() {
+        tvRunDuration.setText( properties.runDuration);
+        tvRunDistance.setText( String.valueOf(properties.runDistance)+" m");
+    }
+
+    private void initVars() {
         Intent intent = getIntent();
-        properties = (RunProperties) intent.getSerializableExtra("2001");
-
+        properties = (Run) intent.getSerializableExtra(INTENT_PREVIEW);
+        tvRunDuration = findViewById(R.id.tvRunDuration);
+        tvRunDistance = findViewById(R.id.tvRunDistance);
+        btnSave = findViewById(R.id.btnSave);
+        btnDismiss = findViewById(R.id.btnDismiss);
     }
 
     private void initMap(){
         SupportMapFragment mapFragment = (SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map);
-        mapFragment.getMapAsync((OnMapReadyCallback) ResultPreviewActivity.this);
+        mapFragment.getMapAsync(ResultPreviewActivity.this);
     }
 
     private void getLocationPermission(){
@@ -84,9 +117,8 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
         switch(requestCode){
             case LOCATION_PERMISSION_REQUEST_CODE:{
                 if (grantResults.length>0){
-                    for(int i = 0 ; i<grantResults.length;i++){
-                        if(grantResults[i] != PackageManager.PERMISSION_GRANTED){
-                            mLocationPermissionsGranted = false;
+                    for (int grantResult : grantResults) {
+                        if (grantResult != PackageManager.PERMISSION_GRANTED) {
                             return;
                         }
                     }
@@ -112,8 +144,11 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
     }
 
     private void drawRunRoute(){
-        Polyline line;
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(properties.centerOfRoute.getLatLng(),zoom));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(properties.centerOfRoute.getLatLng(),DEFAULT_ZOOM));
+
+        if(properties.points.get(0).isEmpty())
+            return;
+
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         for (int i = 0; i < properties.points.size(); i++) {
             PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
@@ -121,9 +156,8 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
                 SerializableLatLng point = properties.points.get(i).get(y);
                 options.add(point.getLatLng());
                 builder.include(point.getLatLng());// optimize latter to not store all latlng points but only the farrest
-
             }
-            line = mMap.addPolyline(options);
+            mMap.addPolyline(options);
         }
         LatLngBounds bounds = builder.build();
         int padding = 0; // offset from edges of the map in pixels
