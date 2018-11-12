@@ -10,11 +10,13 @@ import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -42,8 +44,10 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.maps.android.SphericalUtil;
+
 import java.io.Serializable;
 import java.util.ArrayList;
+
 import static com.example.luka.googlemapsandgogleplaces.Constants.*;
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, Serializable {
@@ -54,7 +58,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private LocationCallback mLocationCallback;
 
     //vars
-    private boolean mTracingEnabled=false;
+    private boolean mTracingEnabled = false;
     private LocationRequest mLocationRequest;
     private boolean mRequestingLocationUpdates = false;
     private boolean mLocationPermissionsGranted = false;
@@ -68,11 +72,13 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     Button btnPause;
     TextView tvTime;
     TextView tvDistance;
-    long MillisecondTime, StartTime, TimeBuff, UpdateTime ;
+    long MillisecondTime, StartTime, TimeBuff, UpdateTime;
 
     Handler handler;
 
-    int Seconds, Minutes, MilliSeconds ;
+    int Seconds, Minutes, MilliSeconds;
+    int deltaSeconds=0;
+    double deltaMeters=0;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -85,13 +91,13 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
     private void initVars() {
-        handler = new Handler() ;
-        properties= new Run();
-        tvDistance =  findViewById(R.id.tvDistance);
+        handler = new Handler();
+        properties = new Run();
+        tvDistance = findViewById(R.id.tvDistance);
         tvDistance.setText("0 m");
-        tvTime =  findViewById(R.id.tvTime);
+        tvTime = findViewById(R.id.tvTime);
         tvTime.setText("00:00:00");
-        MillisecondTime = 0L ;
+        MillisecondTime = 0L;
         StartTime = 0L;
         TimeBuff = 0L;
         UpdateTime = 0L;
@@ -158,7 +164,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 TimeBuff += MillisecondTime;
                 handler.removeCallbacks(runnable);
                 stopLocationUpdates();
-                mTracingEnabled=false;
+                mTracingEnabled = false;
             }
         });
         btnStop = findViewById(R.id.btnStop);
@@ -170,15 +176,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 properties.latMax = MapDisplayUtil.maxLat;
                 properties.lngMin = MapDisplayUtil.minLng;
                 properties.lngMax = MapDisplayUtil.maxLng;
-                properties.runDuration = (String )tvTime.getText();
+                properties.runDuration = (String) tvTime.getText();
 
                 TimeBuff += MillisecondTime;
                 handler.removeCallbacks(runnable);
                 stopLocationUpdates();
-                mTracingEnabled=false;
+                mTracingEnabled = false;
 
                 Intent intent = new Intent(MapActivity.this, ResultPreviewActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 intent.putExtra(INTENT_PREVIEW, properties);
+                intent.putExtra(SOURCE_NAME, "MapActivity");
                 mMap.clear();
 
                 startActivity(intent);
@@ -198,7 +206,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 Location location = null;
 
                 for (Location tempLocation : locationResult.getLocations()) {
-                    if(location==null){
+                    if (location == null) {
                         location = tempLocation;
                     }
                     if (tempLocation.hasAccuracy())
@@ -206,48 +214,53 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             location = tempLocation;
                         }
                 }
-                if (location != null) {
-                    if (!location.hasAccuracy() || location.getAccuracy() < 30) {
-                        return;
-                    }
-                }
+
 
                 SerializableLatLng serLatLng = new SerializableLatLng(new LatLng(location != null ? location.getLatitude() : 0, location != null ? location.getLongitude() : 0));
-                    properties.points.get(properties.points.size()-1).add(serLatLng);
-                    //points.add(new LatLng(location.getLatitude(),location.getLongitude()));
-                    PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
-                    for (int z = 0; z < properties.points.get(properties.points.size()-1).size(); z++) {
-                        SerializableLatLng point = properties.points.get(properties.points.size()-1).get(z);
+                properties.points.get(properties.points.size() - 1).add(serLatLng);
+                //points.add(new LatLng(location.getLatitude(),location.getLongitude()));
+                PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
+                for (int z = 0; z < properties.points.get(properties.points.size() - 1).size(); z++) {
+                    SerializableLatLng point = properties.points.get(properties.points.size() - 1).get(z);
 
-                        options.add(point.getLatLng());
-                        MapDisplayUtil.isMinLat(point.getLatLng().latitude);
-                        MapDisplayUtil.isMaxLat(point.getLatLng().latitude);
-                        MapDisplayUtil.isMinLng(point.getLatLng().longitude);
-                        MapDisplayUtil.isMaxLng(point.getLatLng().longitude);
-                    }
-                    line = mMap.addPolyline(options);
-                    moveCamera(MapDisplayUtil.getCenter());
-                    Log.d(TAG, "onLocationResult: drawng route");
-                    Toast.makeText(MapActivity.this, "Coords: Lat: " + currentLocation.getLatitude() + ", Long: " + currentLocation.getLongitude(), Toast.LENGTH_SHORT).show();
-                    updateDistanceAndSpeed();
+                    options.add(point.getLatLng());
+                    MapDisplayUtil.isMinLat(point.getLatLng().latitude);
+                    MapDisplayUtil.isMaxLat(point.getLatLng().latitude);
+                    MapDisplayUtil.isMinLng(point.getLatLng().longitude);
+                    MapDisplayUtil.isMaxLng(point.getLatLng().longitude);
+                }
+                line = mMap.addPolyline(options);
+                moveCamera(MapDisplayUtil.getCenter());
+                Log.d(TAG, "onLocationResult: drawng route");
+                Toast.makeText(MapActivity.this, "Coords: Lat: " + currentLocation.getLatitude() + ", Long: " + currentLocation.getLongitude(), Toast.LENGTH_SHORT).show();
+                updateDistanceAndSpeed();
             }
         };
     }
 
-    private void updateDistanceAndSpeed() {
+    private void updateDistanceAndSpeed() { // method called everytime location info is recieved so ve can calculate speed from delta s and delta t
         ArrayList<LatLng> arr = new ArrayList<>();
-        for(SerializableLatLng point : properties.points.get(properties.points.size()-1)){
+        for (SerializableLatLng point : properties.points.get(properties.points.size() - 1)) {
             arr.add(point.getLatLng());
         }
 
         properties.runDistance = SphericalUtil.computeLength(arr);
-        tvDistance.setText(" m"+ properties.runDistance);
+        tvDistance.setText(" m" + properties.runDistance);
+        deltaSeconds = Seconds -deltaSeconds;
+        deltaMeters = properties.runDistance - deltaMeters;
+        properties.avgSpeed.add(deltaMeters/deltaSeconds);
+        if(properties.avgSpeed.get(properties.avgSpeed.size()-1)>properties.maxSpeed) {
+            properties.maxSpeed = properties.avgSpeed.get(properties.avgSpeed.size()-1);
+        }
+        properties.avgSpeedTime.add(Seconds);
+        Log.d("Speed","array length: "+properties.avgSpeedTime.size());
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (mRequestingLocationUpdates&&mTracingEnabled) {
+        if (mRequestingLocationUpdates && mTracingEnabled) {
             startLocationUpdates();
         }
     }
@@ -287,74 +300,70 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 null /* Looper */);
     }
 
-    private void initMap(){
-        SupportMapFragment mapFragment = (SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map);
+    private void initMap() {
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(MapActivity.this);
     }
 
-    private void getDeviceLocation(){
+    private void getDeviceLocation() {
         Log.d(TAG, "getDeviceLocation: getdevice location");
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        try{
-            if (mLocationPermissionsGranted){
+        try {
+            if (mLocationPermissionsGranted) {
                 Task location = mFusedLocationProviderClient.getLastLocation();
                 location.addOnCompleteListener(new OnCompleteListener<Location>() {
                     @Override
                     public void onComplete(@NonNull Task task) {
-                        if (task.isSuccessful()){
+                        if (task.isSuccessful()) {
                             Log.d(TAG, "onComplete: found location");
                             currentLocation = (Location) task.getResult();
 
                             moveCamera(new LatLng(currentLocation != null ? currentLocation.getLatitude() : 0, currentLocation != null ? currentLocation.getLongitude() : 0));
-                        }
-                        else {
+                        } else {
                             Log.d(TAG, "onComplete: current location is null");
-                            Toast.makeText(MapActivity.this,"Unable to find current location",Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MapActivity.this, "Unable to find current location", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
             }
-        }
-        catch (SecurityException e){
-            Log.e(TAG, "getDeviceLocation: security exception"+ e.getMessage());
+        } catch (SecurityException e) {
+            Log.e(TAG, "getDeviceLocation: security exception" + e.getMessage());
         }
     }
 
-    private void moveCamera(LatLng latLng){
-        Log.d(TAG, "moveCamera: moving the camera to "+ latLng.latitude+", "+latLng.longitude);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,DEFAULT_ZOOM));
+    private void moveCamera(LatLng latLng) {
+        Log.d(TAG, "moveCamera: moving the camera to " + latLng.latitude + ", " + latLng.longitude);
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM));
     }
 
-    private void getLocationPermission(){
-        String[] permissions ={Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION};
-        if(ContextCompat.checkSelfPermission(this.getApplicationContext(),FINE_LOCATION)== PackageManager.PERMISSION_GRANTED){
-            if(ContextCompat.checkSelfPermission(this.getApplicationContext(),COARSE_LOCATION)== PackageManager.PERMISSION_GRANTED){
+    private void getLocationPermission() {
+        String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION};
+        if (ContextCompat.checkSelfPermission(this.getApplicationContext(), FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this.getApplicationContext(), COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 mLocationPermissionsGranted = true;
                 initMap();
+            } else {
+                ActivityCompat.requestPermissions(this, permissions, LOCATION_PERMISSION_REQUEST_CODE);
             }
-            else {
-                ActivityCompat.requestPermissions(this,permissions,LOCATION_PERMISSION_REQUEST_CODE);
-            }
-        }
-        else {
-            ActivityCompat.requestPermissions(this,permissions,LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            ActivityCompat.requestPermissions(this, permissions, LOCATION_PERMISSION_REQUEST_CODE);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        mLocationPermissionsGranted=false;
+        mLocationPermissionsGranted = false;
 
-        switch(requestCode){
-            case LOCATION_PERMISSION_REQUEST_CODE:{
-                if (grantResults.length>0){
+        switch (requestCode) {
+            case LOCATION_PERMISSION_REQUEST_CODE: {
+                if (grantResults.length > 0) {
                     for (int grantResult : grantResults) {
                         if (grantResult != PackageManager.PERMISSION_GRANTED) {
                             return;
                         }
                     }
-                    mLocationPermissionsGranted=true;
+                    mLocationPermissionsGranted = true;
                     //initialize map
                     initMap();
                 }

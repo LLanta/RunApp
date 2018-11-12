@@ -13,11 +13,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 public class RunAdapter extends RecyclerView.Adapter<RunAdapter.RunHolder> {
     private List<Run> runs = new ArrayList<>();
+    private OnItemClickListener listener;
+
     @NonNull
     @Override
     public RunHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.run_item,parent,false);
+                .inflate(R.layout.run_item, parent, false);
         return new RunHolder(itemView);
     }
 
@@ -25,7 +27,7 @@ public class RunAdapter extends RecyclerView.Adapter<RunAdapter.RunHolder> {
     public void onBindViewHolder(@NonNull RunHolder holder, int position) {
         Run currentRun = runs.get(position);
         holder.tvListDuration.setText(currentRun.runDuration);
-        holder.tvListDistance.setText(String.valueOf(currentRun.runDistance)+" m");
+        holder.tvListDistance.setText(String.valueOf(currentRun.runDistance) + " m");
     }
 
     @Override
@@ -33,12 +35,12 @@ public class RunAdapter extends RecyclerView.Adapter<RunAdapter.RunHolder> {
         return runs.size();
     }
 
-    public void setRuns(List<Run> runs){
+    public void setRuns(List<Run> runs) {
         this.runs = runs;
         notifyDataSetChanged();
     }
 
-    class RunHolder extends RecyclerView.ViewHolder{
+    class RunHolder extends RecyclerView.ViewHolder {
         private TextView tvListDuration;
         private TextView tvListDistance;
 
@@ -46,7 +48,24 @@ public class RunAdapter extends RecyclerView.Adapter<RunAdapter.RunHolder> {
             super(itemView);
             tvListDuration = itemView.findViewById(R.id.tvListDuration);
             tvListDistance = itemView.findViewById(R.id.tvListDistance);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    int position = getAdapterPosition();
+                    if (listener != null && position != RecyclerView.NO_POSITION) {
+                        listener.onItemClick(runs.get(position));
+                    }
+                }
+            });
         }
+    }
+
+    public interface OnItemClickListener {
+        void onItemClick(Run run);
+    }
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
     }
 
 }
