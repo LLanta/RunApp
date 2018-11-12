@@ -6,6 +6,7 @@ import java.util.List;
 
 
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
 
@@ -13,12 +14,23 @@ import androidx.room.TypeConverters;
 class Run implements Serializable {
     @PrimaryKey(autoGenerate = true)
     public int uId;
+
     @TypeConverters({Converters.class})
     ArrayList<ArrayList<SerializableLatLng>> points = new ArrayList<>();
+
     String runDuration;
     double runDistance=0;
+
     @TypeConverters({Converters.class})
     SerializableLatLng centerOfRoute;
+
+    @Ignore
+            ArrayList <Double> avgSpeed = new ArrayList<>();
+    @Ignore
+            ArrayList <Integer> avgSpeedTime = new ArrayList<>();
+    @Ignore
+            double maxSpeed=0;
+    
     double latMin;
     double latMax;
     double lngMin;

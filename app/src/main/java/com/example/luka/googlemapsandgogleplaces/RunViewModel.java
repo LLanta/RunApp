@@ -15,26 +15,26 @@ public class RunViewModel extends AndroidViewModel {
     public RunViewModel(@NonNull Application application) {
         super(application);
         repository = new RunRepository(application);
-        allRuns =repository.getAllRuns();
+        allRuns = repository.getAllRuns();
     }
 
-    public void insert (Run run){
+    public void insert(Run run) {
         repository.insert(run);
     }
 
-    public void update (Run run){
+    public void update(Run run) {
         repository.update(run);
     }
 
-    public void delete(Run run){
+    public void delete(Run run) {
         repository.delete(run);
     }
 
-    public void deleteAll(){
+    public void deleteAll() {
         repository.deleteAllRuns();
     }
 
-    public LiveData<List<Run>> getAllRuns(){
+    public LiveData<List<Run>> getAllRuns() {
         return allRuns;
     }
 }
