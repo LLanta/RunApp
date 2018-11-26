@@ -44,6 +44,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.maps.android.SphericalUtil;
+import com.jjoe64.graphview.series.DataPoint;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -240,6 +241,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     private void updateDistanceAndSpeed() { // method called everytime location info is recieved so ve can calculate speed from delta s and delta t
         ArrayList<LatLng> arr = new ArrayList<>();
+        DataPoint dataPoint;
+
         for (SerializableLatLng point : properties.points.get(properties.points.size() - 1)) {
             arr.add(point.getLatLng());
         }
@@ -248,12 +251,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         tvDistance.setText(" m" + properties.runDistance);
         deltaSeconds = Seconds -deltaSeconds;
         deltaMeters = properties.runDistance - deltaMeters;
-        properties.avgSpeed.add(deltaMeters/deltaSeconds);
-        if(properties.avgSpeed.get(properties.avgSpeed.size()-1)>properties.maxSpeed) {
-            properties.maxSpeed = properties.avgSpeed.get(properties.avgSpeed.size()-1);
+        dataPoint = new DataPoint(Seconds,deltaMeters/deltaSeconds);
+
+        if(properties.avgSpeed.size()!=0&&dataPoint.getY()>properties.avgSpeed.get(properties.avgSpeed.size()-1).getY()) {
+            properties.maxSpeed = dataPoint.getY();
         }
-        properties.avgSpeedTime.add(Seconds);
-        Log.d("Speed","array length: "+properties.avgSpeedTime.size());
+        properties.avgSpeed.add(dataPoint);
 
     }
 

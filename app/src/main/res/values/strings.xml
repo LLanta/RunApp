@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Google maps and gogle places</string>
-    <string name="google_map_api_key">AIzaSyDHFsTLjXEZ91f48gTpqqWoiEgqGQB7RM4</string>
     <string name="title_activity_drawer_base">DrawerBaseActivity</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>

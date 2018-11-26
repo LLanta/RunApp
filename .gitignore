@@ -8,3 +8,4 @@
 /build
 /captures
 .externalNativeBuild
+echo "**/*/res/values/sensitive.xml" > .gitignore

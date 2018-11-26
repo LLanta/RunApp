@@ -29,6 +29,8 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
+import java.util.ArrayList;
+
 import static com.example.luka.googlemapsandgogleplaces.Constants.*;
 
 
@@ -56,21 +58,17 @@ public class ResultPreviewActivity extends AppCompatActivity implements OnMapRea
         manageRecivedIntents();
 
         initButtonListeners();
+
+        DataPoint points[] = properties.avgSpeed.toArray(new DataPoint[properties.avgSpeed.size()]);
         GraphView graph = (GraphView) findViewById(R.id.graph);
-        Log.d("Speed","array length in result activity: "+properties.avgSpeedTime.size());
 
-        DataPoint points [] = new DataPoint[properties.avgSpeedTime.size()];
-        for (int i = 0;i<properties.avgSpeedTime.size();i++){
-            points[i]=new DataPoint(properties.avgSpeedTime.get(i),properties.avgSpeed.get(i));
-
-        }
         graph.getViewport().setYAxisBoundsManual(true);
         graph.getViewport().setMinY(0);
         graph.getViewport().setMaxY(properties.maxSpeed);
 
         graph.getViewport().setXAxisBoundsManual(true);
         graph.getViewport().setMinX(0);
-        graph.getViewport().setMaxX(properties.avgSpeedTime.get(properties.avgSpeedTime.size()-1));
+        graph.getViewport().setMaxX(points[points.length-1].getX());
 
         LineGraphSeries<DataPoint> series = new LineGraphSeries<>(points);
         graph.addSeries(series);

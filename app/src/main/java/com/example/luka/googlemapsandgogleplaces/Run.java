@@ -1,5 +1,7 @@
 package com.example.luka.googlemapsandgogleplaces;
 
+import com.jjoe64.graphview.series.DataPoint;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,12 +26,11 @@ class Run implements Serializable {
     @TypeConverters({Converters.class})
     SerializableLatLng centerOfRoute;
 
-    @Ignore
-            ArrayList <Double> avgSpeed = new ArrayList<>();
-    @Ignore
-            ArrayList <Integer> avgSpeedTime = new ArrayList<>();
-    @Ignore
-            double maxSpeed=0;
+    @TypeConverters({Converters.class})
+    ArrayList <DataPoint> avgSpeed = new ArrayList<>();
+
+
+    double maxSpeed=0;
     
     double latMin;
     double latMax;
